@@ -23,24 +23,7 @@ ACTION_D_LVL = 5  # action space discretization level
 SAVE_FREQ = 50
 SAVE_DIR = 'trained_models/'
 
-def parse_action(action_idx, n_actions):
-    action = []
-    # 1
-    idx = ACTION_D_LVL ** (n_actions - 1)
-    output = int(action_idx / idx) - 1
-    rest = action_idx - idx * int(action_idx / idx)
-    action.append(output)
-
-    for i in range(2, n_actions):
-        idx = ACTION_D_LVL ** (n_actions - i)
-        output = int(rest / idx) - 1
-        rest -= idx * int(rest / idx)
-        action.append(output)
-    # 4
-    action.append(rest - 1)
-
-    return action
-
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 if __name__ == "__main__":
     env = gym.make("BipedalWalker-v3", render_mode="human", autoreset=True, max_episode_steps=EPISODE_LENGTH)
@@ -49,8 +32,8 @@ if __name__ == "__main__":
     n_states = env.observation_space.shape[0]
     n_actions = env.action_space.shape[0]
 
-    online_net = QNet(n_states=n_states, n_actions=n_actions, disct_lvl=3, seed=0)
-    target_net = QNet(n_states=n_states, n_actions=n_actions, disct_lvl=3, seed=0)
+    online_net = QNet(n_states=n_states, n_actions=n_actions, disct_lvl=3, seed=0).to(device)
+    target_net = QNet(n_states=n_states, n_actions=n_actions, disct_lvl=3, seed=0).to(device)
 
     optimizer = torch.optim.Adam(online_net.parameters(), lr=LR)
 
@@ -94,11 +77,10 @@ if __name__ == "__main__":
                 # action = random.randrange(ACTION_D_LVL ** n_actions)
                 action = env.action_space.sample()
             else:
+                action = online_net.act(torch.as_tensor(state, dtype=torch.float32).unsqueeze(0).to(device))
                 # action = online_net.act(state)
-                action = online_net.act(state)
 
 
-            # action = parse_action(action, n_actions=n_actions)
             new_state, reward, terminated, truncated, _ = env.step(action)
             # add the transition into replay buffer
             transition = (state, action, reward, terminated, new_state)
@@ -116,11 +98,11 @@ if __name__ == "__main__":
             terminateds = np.asarray([t[3] for t in transitions])
             new_states = np.asarray([t[4] for t in transitions])
             # convert to tensor
-            states = torch.as_tensor(states, dtype=torch.float32)
-            actions = torch.as_tensor(actions, dtype=torch.long)
-            rewards = torch.as_tensor(rewards, dtype=torch.float32).unsqueeze(-1)
-            terminateds = torch.as_tensor(terminateds, dtype=torch.uint8).unsqueeze(-1)
-            new_states = torch.as_tensor(new_states, dtype=torch.float32)
+            states = torch.as_tensor(states, dtype=torch.float32).to(device)
+            actions = torch.as_tensor(actions, dtype=torch.long).to(device)
+            rewards = torch.as_tensor(rewards, dtype=torch.float32).unsqueeze(-1).to(device)
+            terminateds = torch.as_tensor(terminateds, dtype=torch.uint8).unsqueeze(-1).to(device)
+            new_states = torch.as_tensor(new_states, dtype=torch.float32).to(device)
             # Computer Targets
             target_q_val = target_net(new_states)
             # max_target_q_values = target_q_values.max(dim=1, keepdim=True)
@@ -147,10 +129,8 @@ if __name__ == "__main__":
                 reward_buffer.append(episode_reward)
                 break
 
-        print(f'Episode: {ep},\tScore: {episode_reward},\tDistance: {total_distance}, \tEpsilon: {epsilon}, 'f'\tAvg '
-              f'Score: {np.mean(reward_buffer)}'
-              f'\tAvg '
-              f'Distance: {np.mean(distance_buffer)}')
+        print(f'Episode: {ep},\tScore: {episode_reward},\tDistance: {total_distance}, \tEpsilon: {epsilon}, \tAvg '
+              f'Score: {np.mean(reward_buffer)}, \tAvg Distance: {np.mean(distance_buffer)}')
 
         scores.append(total_reward)
         distances.append(total_distance)
@@ -177,7 +157,7 @@ if __name__ == "__main__":
             torch.save(target_net.state_dict(), SAVE_DIR + '/target_ep' + str(ep) + '.pth')
             mean_scores.append(mean_score)
             mean_distances.append(mean_distance)
-            FILE = 'record_mean.dat'
+            FILE = 'records_mean.dat'
             data = [ep, mean_score, mean_distance, epsilon]
             with open(FILE, "ab") as f:
                 pickle.dump(data, f)

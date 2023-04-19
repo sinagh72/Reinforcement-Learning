@@ -34,7 +34,7 @@ class ActorNet(nn.Module):
             action = self.forward(state.unsqueeze(0))
         self.train()  # back to training mode
         # max_q_index = torch.argmax(q_values, dim=1)[0]
-        action = action.numpy().flatten()
+        action = action.cpu().data.numpy().flatten()
         return action
 
 

@@ -25,9 +25,10 @@ WEIGHT_DECAY = 0.001  # L2 weight decay
 EXP_FACT = 1
 EXP_DECAY = 0.999
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 
 def soft_update(online_net, target_net, tau):
-
     for target_param, online_param in zip(online_net.parameters(), target_net.parameters()):
         target_param.data.copy_(tau * online_param.data + (1.0 - tau) * target_param.data)
 
@@ -39,12 +40,12 @@ if __name__ == "__main__":
     n_states = env.observation_space.shape[0]
     n_actions = env.action_space.shape[0]
 
-    actor_online_net = ActorNet(n_states=n_states, n_actions=n_actions, seed=0)
-    actor_target_net = ActorNet(n_states=n_states, n_actions=n_actions, seed=0)
+    actor_online_net = ActorNet(n_states=n_states, n_actions=n_actions, seed=0).to(device)
+    actor_target_net = ActorNet(n_states=n_states, n_actions=n_actions, seed=0).to(device)
     actor_optimizer = torch.optim.Adam(actor_online_net.parameters(), lr=LR_ACTOR)
 
-    critic_online_net = CriticNet(n_states=n_states, n_actions=n_actions, seed=0)
-    critic_target_net = CriticNet(n_states=n_states, n_actions=n_actions, seed=0)
+    critic_online_net = CriticNet(n_states=n_states, n_actions=n_actions, seed=0).to(device)
+    critic_target_net = CriticNet(n_states=n_states, n_actions=n_actions, seed=0).to(device)
     critic_optimizer = torch.optim.Adam(critic_online_net.parameters(), lr=LR_CRITIC, weight_decay=WEIGHT_DECAY)
 
     noise = OrnsteinUhlenbeckNoise(n_actions, mu=0, theta=0.4, sigma=0.2)
@@ -72,7 +73,8 @@ if __name__ == "__main__":
     distances = []
     mean_distances = []
     last_distance = deque(maxlen=SAVE_FREQ)
-
+    actor_losses = []
+    critic_losses = []
     for ep in range(TOTAL_EPISODES):
         state, info = env.reset()
         episode_reward = 0
@@ -80,7 +82,8 @@ if __name__ == "__main__":
         losses = []
         for step in range(EPISODE_LENGTH):
             # select action by epsilon-greedy policy
-            action = actor_online_net.act(state) + noise.sample() * EXP_FACT
+            action = actor_online_net.act(
+                torch.as_tensor(state, dtype=torch.float32).to(device)) + noise.sample() * EXP_FACT
             EXP_FACT *= EXP_DECAY
 
             # add noise
@@ -102,11 +105,11 @@ if __name__ == "__main__":
             terminateds = np.asarray([t[3] for t in transitions])
             nxt_states = np.asarray([t[4] for t in transitions])
             # convert to tensor
-            states = torch.as_tensor(states, dtype=torch.float32)
-            actions = torch.as_tensor(actions, dtype=torch.float32)
-            rewards = torch.as_tensor(rewards, dtype=torch.float32).unsqueeze(-1)
-            terminateds = torch.as_tensor(terminateds, dtype=torch.uint8).unsqueeze(-1)
-            nxt_states = torch.as_tensor(nxt_states, dtype=torch.float32)
+            states = torch.as_tensor(states, dtype=torch.float32).to(device)
+            actions = torch.as_tensor(actions, dtype=torch.float32).to(device)
+            rewards = torch.as_tensor(rewards, dtype=torch.float32).unsqueeze(-1).to(device)
+            terminateds = torch.as_tensor(terminateds, dtype=torch.uint8).unsqueeze(-1).to(device)
+            nxt_states = torch.as_tensor(nxt_states, dtype=torch.float32).to(device)
             # Computer Targets
             # ---------------------------- update critic ---------------------------- #
             # Get predicted next-state actions and Q values from target models
@@ -137,14 +140,19 @@ if __name__ == "__main__":
             soft_update(actor_online_net, actor_target_net, tau=TAU)
             soft_update(critic_online_net, critic_target_net, tau=TAU)
 
+            if actor_loss is not None:
+                actor_losses.append(actor_loss)
+            if critic_loss is not None:
+                critic_losses.append(critic_loss)
+
             if terminated or truncated:
                 distance_buffer.append(total_distance)
                 reward_buffer.append(episode_reward)
                 break
-
-        print(f'Episode: {ep},\tScore: {episode_reward},\tDistance: {total_distance},  'f'\tActor Loss: '
-              f'Score: {actor_loss}'
-              f'\tCritic Loss: {np.mean(critic_loss)}')
+        print(f'Episode: {ep},\tScore: {round(episode_reward, 4)},\tDistance: {round(total_distance, 4)},'
+              f'\tActor Loss: '
+              f'Score: {torch.mean(torch.stack(actor_losses))}'
+              f'\tCritic Loss: {torch.mean(torch.stack(critic_losses))}')
 
         scores.append(total_reward)
         distances.append(total_distance)
