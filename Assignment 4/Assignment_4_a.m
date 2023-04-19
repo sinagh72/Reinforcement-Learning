@@ -1,0 +1,328 @@
+clear; clc;
+
+%% Main Program:
+
+Counter = 0;
+Counter_2 = 0;
+State_Action_Reward{25,5} =[];
+Discount_Factor = 0.99;
+
+Actions_All = {'Up','Left','Down','Right','Stay'};
+
+% ----------- Initialization for Q: ---------------
+for i = 1:1:25
+    for j = 1:1:5
+        Q_State_Action(i,j) = 0;
+    end
+end
+% -------------------------------------------------
+
+% i = Episode Number // t = Experiment Number
+Total_Episodes = 1000;
+Episodes_Length = 15;
+
+for i = 1:1:Total_Episodes
+    
+    % ----------- Pick random first action based on criterias : ----------
+    State_0 = randi(25);
+    if ( ismember([State_0] , [13 14 15]) )
+        Action_0 = 'Stay';
+    else
+        Action_0 = Actions_All{ randi(5) };
+    end
+    % --------------------------------------------------------------------
+    
+    States_Arr {i,1} = State_0;
+    Actions_Arr {i,1} = Action_0;
+%     Rewards_Arr = {};
+    
+    State = State_0;
+    Action = Action_0;
+    
+    % Generating Episode:
+    for T = 1:1:Episodes_Length
+        
+        [Applied_Action, State_Prime, Reward] = Transition_Function (State, Action);
+        
+        
+        States_Arr {i,T+1} = State;        
+        Actions_Arr {i,T+1} = Applied_Action;
+        
+        Rewards_Arr {i,T} = Reward;
+        
+        State = State_Prime;
+        Action = Policy_Function (State);
+        
+        %=================================================================
+%         if ( State_Prime == 13 || State_Prime == 14 || State_Prime == 15 )
+%             if ( strcmp(Action,'Left') == 1 )
+%                 Counter_2 = Counter_2 + 1
+% %                 disp('oOo');
+%             end
+%         end
+        
+%         if ( State == 13 || State == 14 || State == 15 )
+%             if ( strcmp(Applied_Action,'Up') == 1 )
+%                 Counter_2 = Counter_2 + 1
+%                 disp('oOo');
+%             end
+%         end
+        %=================================================================
+        
+    end
+    
+    State_Action_Episode = { States_Arr{i,:} ; Actions_Arr{i,:} };
+    
+    Q_First_Visit_Condition= zeros(25,5);
+    
+    % --------------------------------------------------------------------
+    G = 0;
+    for t = Episodes_Length:-1:1
+        G = G + Discount_Factor * Rewards_Arr {i,t};
+        
+        if ( Q_First_Visit_Condition( States_Arr{i,t} ,...
+                Action_To_Number( Actions_Arr{i,t} ) ) == 0 )
+            
+            Q_First_Visit_Condition( States_Arr{i,t} ,...
+                Action_To_Number( Actions_Arr{i,t} )) = 1;
+            
+            State_Action_Reward{ States_Arr{i,t} ,...
+                Action_To_Number( Actions_Arr{i,t} ) } = ...
+                [ State_Action_Reward{ States_Arr{i,t} ,...
+                Action_To_Number( Actions_Arr{i,t} ) } ; G ];
+            
+            Q_State_Action(States_Arr{i,t} ,...
+                Action_To_Number( Actions_Arr{i,t} )) = ...
+                mean (State_Action_Reward{ States_Arr{i,t} ,...
+                Action_To_Number( Actions_Arr{i,t} ) });
+                    
+        end        
+                
+    end
+    % --------------------------------------------------------------------
+%  disp('Stop');   
+    
+end
+
+%% Try :) !
+% Counter = 0;
+% 
+% for i =1:1:100
+%     
+%     %     AAA{i,1} = Transition_Function (13, 'Up');
+%     %     if( strcmp(AAA{i,1},'Stay') )
+%     %         Counter = Counter + 1 ;
+%     %     end
+%     %
+%     
+%     [Applied_Action, State_Prime, Reward] = Transition_Function (8,'Right');
+%     AAA{i,1} = Applied_Action;
+%     AAA{i,2} = State_Prime;
+%     AAA{i,3} = Reward;
+% 
+% %     AAA{i,1} = Policy_Function (15);
+% %     if ( strcmp(AAA{i,1},'Stay') )
+% %         Counter = Counter + 1 ;
+% %     end
+% 
+%     
+% end
+
+% 100 * (Counter / 100
+
+% [Applied_Action, State_Prime] = Transition_Function (25,'Up')
+
+% Action_To_Number ('Down')
+
+
+%% Policy Function Definition:
+function [Action] = Policy_Function (State)
+    
+    if (State == 13 || State == 14 || State == 15)
+        
+        Action = 'Stay';
+    
+    else
+        
+        Prob_Dist = 100*rand;
+        if (Prob_Dist >= 0 && Prob_Dist < 20)
+            Action = 'Up';
+        elseif (Prob_Dist >= 20 && Prob_Dist < 40)
+            Action = 'Left';
+        elseif (Prob_Dist >= 40 && Prob_Dist < 60)
+            Action = 'Down';
+        elseif (Prob_Dist >= 60 && Prob_Dist < 80)
+            Action = 'Right';
+        elseif (Prob_Dist >= 80 && Prob_Dist < 100)
+            Action = 'Stay';                        
+        end
+            
+    end
+    
+end
+
+
+%% Transition Function Definition:
+
+
+% function [State_prime] = Transition_Function (State, Action);
+function [Applied_Action, State_Prime, Reward] = Transition_Function (State, Action)
+
+    State_Column = mod(State, 5);
+    if ( State_Column == 0 )
+        State_Column = 5;
+    end;
+    State_Row = ( (State - State_Column) / 5 ) + 1;
+
+%     disp('Row :'); disp(State_Row);    
+%     disp('Column :'); disp(State_Column);    
+    
+    Prob_Dist = 100*rand;
+    
+%     Applied_Action
+    
+    if ( strcmp(Action,'Stay') )
+        Applied_Action = Action;
+    end
+    
+    if ( strcmp(Action,'Up') )
+
+        if (Prob_Dist >= 0 && Prob_Dist < 70)
+            Applied_Action = 'Up';         
+        elseif(Prob_Dist >= 70 && Prob_Dist < 80)
+            Applied_Action = 'Left';            
+        elseif(Prob_Dist >= 80 && Prob_Dist < 90)
+            Applied_Action = 'Right';            
+        elseif(Prob_Dist >= 90 && Prob_Dist < 100)
+            Applied_Action = 'Stay';
+            
+        end               
+    end
+    
+    if ( strcmp(Action,'Left') )
+
+        if (Prob_Dist >= 0 && Prob_Dist < 70)
+            Applied_Action = 'Left';         
+        elseif(Prob_Dist >= 70 && Prob_Dist < 80)
+            Applied_Action = 'Down';            
+        elseif(Prob_Dist >= 80 && Prob_Dist < 90)
+            Applied_Action = 'Up';            
+        elseif(Prob_Dist >= 90 && Prob_Dist < 100)
+            Applied_Action = 'Stay';
+            
+        end               
+    end
+    
+    if ( strcmp(Action,'Down') )
+
+        if (Prob_Dist >= 0 && Prob_Dist < 70)
+            Applied_Action = 'Down';         
+        elseif(Prob_Dist >= 70 && Prob_Dist < 80)
+            Applied_Action = 'Right';            
+        elseif(Prob_Dist >= 80 && Prob_Dist < 90)
+            Applied_Action = 'Left';            
+        elseif(Prob_Dist >= 90 && Prob_Dist < 100)
+            Applied_Action = 'Stay';
+            
+        end               
+    end
+    
+    if ( strcmp(Action,'Right') )
+
+        if (Prob_Dist >= 0 && Prob_Dist < 70)
+            Applied_Action = 'Right';         
+        elseif(Prob_Dist >= 70 && Prob_Dist < 80)
+            Applied_Action = 'Up';            
+        elseif(Prob_Dist >= 80 && Prob_Dist < 90)
+            Applied_Action = 'Down';            
+        elseif(Prob_Dist >= 90 && Prob_Dist < 100)
+            Applied_Action = 'Stay';
+            
+        end               
+    end
+    
+    
+    if ( strcmp(Applied_Action,'Stay') )
+       State_Prime = State; 
+    end
+    
+    if ( strcmp(Applied_Action,'Up') )
+        if ( State_Row == 5 )
+            State_Prime = State;
+        else
+            State_Prime = State_Row * 5 + State_Column;
+        end 
+    end
+    
+    if ( strcmp(Applied_Action,'Left') ) 
+        if ( State_Column == 1 )
+            State_Prime = State;
+        else
+            State_Prime = (State_Row - 1 )* 5 + (State_Column - 1);
+        end 
+    end
+    
+    if ( strcmp(Applied_Action,'Down') ) 
+        if ( State_Row == 1 )
+            State_Prime = State;
+        else
+            State_Prime = (State_Row - 2) * 5 + State_Column;
+        end 
+    end
+    
+    if ( strcmp(Applied_Action,'Right') )
+        if ( State_Column == 5 )
+            State_Prime = State;
+        else
+            State_Prime = (State_Row - 1) * 5 + (State_Column + 1);
+        end 
+    end
+
+    R = -100;
+    
+    if ( ismember([State_Prime] , [3 4 5]) )
+        Reward = R;
+    elseif ( ismember([State_Prime] , [13 14 15]) )
+        Reward = 0;
+    
+    else
+        
+        if ( strcmp(Applied_Action, 'Stay') )
+            Reward = -0.5;
+        elseif ( strcmp(Action, Applied_Action) && State ~= State_Prime )
+            Reward = -1;
+        else
+            Reward = -0.5;
+        end
+        
+    end
+        
+            
+
+end
+
+function [Action_Number] = Action_To_Number (Action)
+
+    if ( strcmp(Action, 'Up') )
+        Action_Number = 1;
+    end
+    if ( strcmp(Action, 'Left') )
+        Action_Number = 2;
+    end
+    if ( strcmp(Action, 'Down') )
+        Action_Number = 3;
+    end
+    if ( strcmp(Action, 'Right') )
+        Action_Number = 4;
+    end
+    if ( strcmp(Action, 'Stay') )
+        Action_Number = 5;
+    end
+
+end
+
+       
+
+
+
+
