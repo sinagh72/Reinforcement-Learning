@@ -12,20 +12,21 @@ from noise import OrnsteinUhlenbeckNoise
 GAMMA = 0.99  # discount factor
 BATCH_SIZE = 256  # samples from the replay buffer
 BUFFER_SIZE = 1000000  # max size of the replay buffer before overriding it
-MIN_REPLAY_SIZE = 256  # min number fo samples inside the replay buffer before computing the gradient or starting the training
+MIN_REPLAY_SIZE = 2048  # min number fo samples inside the replay buffer before computing the gradient or starting the training
 LR = 5e-5
-TOTAL_EPISODES = 10000
+TOTAL_EPISODES = 20000
 EPISODE_LENGTH = 2000
 SAVE_FREQ = 50
 SAVE_DIR = 'trained_models/'
 TAU = 0.001
-LR_ACTOR = 0.0001  # learning rate of the actor
-LR_CRITIC = 0.001  # learning rate of the critic
-WEIGHT_DECAY = 0.001  # L2 weight decay
-EXP_FACT = 1
-EXP_DECAY = 0.999
+LR_ACTOR = 1e-4  # learning rate of the actor
+LR_CRITIC = 1e-3  # learning rate of the critic
+WEIGHT_DECAY = 1e-3  # L2 weight decay
+EXP_DECAY = 20000
+EXP_START = 1.0
+EXP_END = 0.02
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:5" if torch.cuda.is_available() else "cpu")
 
 
 def soft_update(online_net, target_net, tau):
@@ -76,6 +77,7 @@ if __name__ == "__main__":
     actor_losses = []
     critic_losses = []
     for ep in range(TOTAL_EPISODES):
+        EXP_FACT = np.interp(ep, [0, EXP_DECAY], [EXP_START, EXP_END])
         state, info = env.reset()
         episode_reward = 0
         total_distance = 0
@@ -84,8 +86,6 @@ if __name__ == "__main__":
             # select action by epsilon-greedy policy
             action = actor_online_net.act(
                 torch.as_tensor(state, dtype=torch.float32).to(device)) + noise.sample() * EXP_FACT
-            EXP_FACT *= EXP_DECAY
-
             # add noise
 
             nxt_state, reward, terminated, truncated, _ = env.step(action)
@@ -150,8 +150,7 @@ if __name__ == "__main__":
                 reward_buffer.append(episode_reward)
                 break
         print(f'Episode: {ep},\tScore: {round(episode_reward, 4)},\tDistance: {round(total_distance, 4)},'
-              f'\tActor Loss: '
-              f'Score: {torch.mean(torch.stack(actor_losses))}'
+              f'\tActor Loss: {torch.mean(torch.stack(actor_losses))}'
               f'\tCritic Loss: {torch.mean(torch.stack(critic_losses))}')
 
         scores.append(total_reward)

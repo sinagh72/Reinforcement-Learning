@@ -9,12 +9,12 @@ class ActorNet(nn.Module):
     def __init__(self, n_states, n_actions, seed):
         super(ActorNet, self).__init__()
         self.seed = torch.manual_seed(seed)
-        self.fc1 = nn.Linear(n_states, 600)
-        self.fc2 = nn.Linear(600, 300)
-        self.fc3 = nn.Linear(300, n_actions)
+        self.fc1 = nn.Linear(n_states, 1024)
+        self.fc2 = nn.Linear(1024, 512)
+        self.fc3 = nn.Linear(512, n_actions)
 
-        self.bn1 = nn.BatchNorm1d(600)
-        self.bn2 = nn.BatchNorm1d(300)
+        self.bn1 = nn.BatchNorm1d(1024)
+        self.bn2 = nn.BatchNorm1d(512)
     #     self.reset_parameters()
     #
     # def reset_parameters(self):
@@ -25,7 +25,7 @@ class ActorNet(nn.Module):
         """Build an actor (policy) network that maps states -> actions."""
         x = F.relu((self.bn1(self.fc1(state))))
         x = F.relu((self.bn2(self.fc2(x))))
-        return F.tanh(self.fc3(x))
+        return torch.tanh(self.fc3(x))
 
     def act(self, state):
         state = torch.as_tensor(state, dtype=torch.float32)
@@ -43,11 +43,11 @@ class CriticNet(nn.Module):
     def __init__(self, n_states, n_actions, seed, ):
         super(CriticNet, self).__init__()
         self.seed = torch.manual_seed(seed)
-        self.fcs1 = nn.Linear(n_states, 600)
-        self.fcs2 = nn.Linear(600, 300)
-        self.fca1 = nn.Linear(n_actions, 300)
-        self.fc1 = nn.Linear(300, 1)
-        self.bn1 = nn.BatchNorm1d(600)
+        self.fcs1 = nn.Linear(n_states, 1024)
+        self.fcs2 = nn.Linear(1024, 512)
+        self.fca1 = nn.Linear(n_actions, 512)
+        self.fc1 = nn.Linear(512, 1)
+        self.bn1 = nn.BatchNorm1d(1024)
     #     self.reset_parameters()
     #
     # def reset_parameters(self):
