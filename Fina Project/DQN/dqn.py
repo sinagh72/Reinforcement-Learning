@@ -129,8 +129,8 @@ if __name__ == "__main__":
                 reward_buffer.append(episode_reward)
                 break
 
-        print(f'Episode: {ep},\tScore: {episode_reward},\tDistance: {total_distance}, \tEpsilon: {epsilon}, \tAvg '
-              f'Score: {np.mean(reward_buffer)}, \tAvg Distance: {np.mean(distance_buffer)}')
+        print(f'Episode: {ep},\tScore: {round(episode_reward,4)},\tDistance: {round(total_distance, 4)},\tEpsilon: {epsilon},\tAvg '
+              f'Score: {round(np.mean(reward_buffer),4)},\tAvg Distance: {round(np.mean(distance_buffer), 4)}')
 
         scores.append(total_reward)
         distances.append(total_distance)
