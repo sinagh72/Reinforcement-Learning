@@ -14,8 +14,8 @@ def plot_episode(plot, x_val, y_val, total_reward, plot_line, sub_plot_counter):
 
 
 if __name__ == "__main__":
-    EPISODES = 50000
-    SAVE_FREQ = 10000
+    EPISODES = 10000
+    SAVE_FREQ = 1000
     MIN_EPS = 0.1
     agent_plot = plt.figure()
     x_val, y_val = [], []
