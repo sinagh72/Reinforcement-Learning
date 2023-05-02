@@ -15,11 +15,6 @@ class ActorNet(nn.Module):
 
         self.bn1 = nn.BatchNorm1d(1024)
         self.bn2 = nn.BatchNorm1d(512)
-    #     self.reset_parameters()
-    #
-    # def reset_parameters(self):
-    #     self.fc2.weight.data.uniform_(-1.5e-3, 1.5e-3)
-    #     self.fc3.weight.data.uniform_(-3e-3, 3e-3)
 
     def forward(self, state):
         """Build an actor (policy) network that maps states -> actions."""
@@ -33,8 +28,7 @@ class ActorNet(nn.Module):
         with torch.no_grad():
             action = self.forward(state.unsqueeze(0))
         self.train()  # back to training mode
-        # max_q_index = torch.argmax(q_values, dim=1)[0]
-        action = action.cpu().data.numpy().flatten()
+        action = action.cpu().detach().numpy().flatten()
         return action
 
 
@@ -48,11 +42,6 @@ class CriticNet(nn.Module):
         self.fca1 = nn.Linear(n_actions, 512)
         self.fc1 = nn.Linear(512, 1)
         self.bn1 = nn.BatchNorm1d(1024)
-    #     self.reset_parameters()
-    #
-    # def reset_parameters(self):
-    #     self.fcs2.weight.data.uniform_(-1.5e-3, 1.5e-3)
-    #     self.fc1.weight.data.uniform_(-3e-3, 3e-3)
 
     def forward(self, state, action):
         """Build a critic (value) network that maps (state, action) pairs -> Q-values."""
