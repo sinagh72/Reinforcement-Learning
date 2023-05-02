@@ -160,7 +160,7 @@ if __name__ == "__main__":
 
         total_rewards.append(episode_reward)
         total_distances.append(episode_distance)
-        total_losses.append(np.mean(losses))
+        total_losses.append(m_loss)
         plot_episode(episode_score_plt, "episode_score", x_episode_score, y_episode_score, episode_reward,
                      episode_score_line, ep)
         plot_episode(episode_avg_loss_plt, "episode_avg_loss", x_episode_avg_loss, y_episode_avg_loss, m_loss,
