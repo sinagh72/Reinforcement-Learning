@@ -1,6 +1,4 @@
-import itertools
 import os
-import pickle
 import random
 from collections import deque
 import gymnasium as gym
@@ -36,7 +34,7 @@ def plot_episode(plot, plt_name, x_val, y_val, total_reward, plot_line, sub_plot
     plot.savefig(f"{save_path}/{plt_name}")
 
 
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def soft_update(main_net, target_net, tau):
@@ -46,7 +44,7 @@ def soft_update(main_net, target_net, tau):
 
 
 if __name__ == "__main__":
-    load_dotenv(dotenv_path="./results_4/.env")
+    load_dotenv(dotenv_path="./results_5/.env")
     gamma = float(os.getenv('gamma'))  # discount factor
     batch_size = int(os.getenv('batch_size'))  # samples from the replay buffer
     buffer_size = int(os.getenv('buffer_size'))  # max size of the replay buffer before overriding it
@@ -62,7 +60,7 @@ if __name__ == "__main__":
     noise_std = float(os.getenv('noise_std'))
     noise_mean = float(os.getenv('noise_mean'))
     noise_scale = float(os.getenv('noise_scale'))
-
+    print(save_path)
     episode_score_plt, episode_score_line, x_episode_score, y_episode_score = create_plot("#Episode", "Score")
     episode_avg_critic_loss_plt, episode_avg_critic_loss_line, x_episode_avg_critic_loss, y_episode_avg_critic_loss = create_plot(
         "#Episode", "Avg Critic Loss", y_min=0, y_max=20)
@@ -109,10 +107,8 @@ if __name__ == "__main__":
 
     scores = []
     mean_scores = []
-    last_scores = deque(maxlen=save_freq)
+    last_scores = deque(maxlen=5)
     distances = []
-    mean_distances = []
-    last_distance = deque(maxlen=save_freq)
     actor_losses = []
     critic_losses = []
     for ep in range(1, total_episodes + 1):
@@ -125,16 +121,12 @@ if __name__ == "__main__":
             # select action by epsilon-greedy policy
             action = np.clip(actor_main_net.act(
                 torch.as_tensor(state, dtype=torch.float32).to(device)) + noise.sample(), a_min=-1, a_max=1)
-            # add noise
-
             nxt_state, reward, terminated, truncated, _ = env.step(action)
             # add the transition into replay buffer
             transition = (state, action, reward, terminated + truncated, nxt_state)
             replay_buffer.append(transition)
             state = nxt_state
             episode_reward += reward
-
-            # start gradient step
             # get a batch from the replay buffer
             transitions = random.sample(replay_buffer, batch_size)
 
@@ -149,7 +141,7 @@ if __name__ == "__main__":
             rewards = torch.as_tensor(rewards, dtype=torch.float32).unsqueeze(-1).to(device)
             dones = torch.as_tensor(dones, dtype=torch.uint8).unsqueeze(-1).to(device)
             nxt_states = torch.as_tensor(nxt_states, dtype=torch.float32).to(device)
-            # ---------------------------- update critic ---------------------------- #
+
             nxt_actions = actor_target_net(nxt_states)  # batch_size * n_actions
             Q_target_next = critic_target_net(nxt_states, nxt_actions)  # batch_size * 1
             Q_target = rewards + (gamma * Q_target_next * (1 - dones))  # batch_size * 1
@@ -160,8 +152,6 @@ if __name__ == "__main__":
             critic_optimizer.zero_grad()
             critic_loss.backward()
             critic_optimizer.step()
-
-            # ---------------------------- update actor ---------------------------- #
             # Compute actor loss
             actions_pred = actor_main_net(states)
             actor_loss = -critic_main_net(states, actions_pred).mean()
@@ -194,9 +184,7 @@ if __name__ == "__main__":
         scores.append(total_reward)
         distances.append(total_distance)
         last_scores.append(total_reward)
-        last_distance.append(total_distance)
         mean_score = np.mean(last_scores)
-        mean_distance = np.mean(last_distance)
 
         plot_episode(episode_score_plt, "episode_score", x_episode_score, y_episode_score, episode_reward,
                      episode_score_line, ep)
@@ -211,17 +199,17 @@ if __name__ == "__main__":
 
         if mean_score >= 300:
             print('\nEnvironment solved in {:d} episodes!\tAverage Score: {:.2f}'.format(ep, mean_score))
-            torch.save(actor_main_net.state_dict(), save_path + '/best/actor_online_ep' + str(ep) + '.pth')
-            torch.save(actor_target_net.state_dict(), save_path + '/best/actor_online_ep' + str(ep) + '.pth')
-            torch.save(critic_main_net.state_dict(), save_path + '/best/critic_online_ep' + str(ep) + '.pth')
+            torch.save(actor_main_net.state_dict(), save_path + '/best/actor_main_ep' + str(ep) + '.pth')
+            torch.save(actor_target_net.state_dict(), save_path + '/best/actor_main_ep' + str(ep) + '.pth')
+            torch.save(critic_main_net.state_dict(), save_path + '/best/critic_main_ep' + str(ep) + '.pth')
             torch.save(critic_target_net.state_dict(), save_path + '/best/critic_target_ep' + str(ep) + '.pth')
             break
 
         # save model every save_freq episodes
         if ep % save_freq == 0:
-            torch.save(actor_main_net.state_dict(), save_path + '/actor_online_ep' + str(ep) + '.pth')
-            torch.save(actor_target_net.state_dict(), save_path + '/actor_online_ep' + str(ep) + '.pth')
-            torch.save(critic_main_net.state_dict(), save_path + '/critic_online_ep' + str(ep) + '.pth')
+            torch.save(actor_main_net.state_dict(), save_path + '/actor_main_ep' + str(ep) + '.pth')
+            torch.save(actor_target_net.state_dict(), save_path + '/actor_main_ep' + str(ep) + '.pth')
+            torch.save(critic_main_net.state_dict(), save_path + '/critic_main_ep' + str(ep) + '.pth')
             torch.save(critic_target_net.state_dict(), save_path + '/critic_target_ep' + str(ep) + '.pth')
 
     print(save_path, "highest score:", highest_score)
