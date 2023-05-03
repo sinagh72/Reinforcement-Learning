@@ -1,5 +1,7 @@
 import gymnasium as gym
 import numpy as np
+import torch
+
 from model import ActorNet
 
 total_episodes = 100
@@ -10,7 +12,7 @@ n_states = env.observation_space.shape[0]
 n_actions = env.action_space.shape[0]
 
 actor = ActorNet(n_states=n_states, n_actions=n_actions, seed=0)
-
+actor = torch.load(model_path)
 
 scores = []
 for ep in range(1, total_episodes + 1):

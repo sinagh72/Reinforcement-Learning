@@ -34,7 +34,7 @@ def plot_episode(plot, plt_name, x_val, y_val, total_reward, plot_line, sub_plot
     plot.savefig(f"{save_path}/{plt_name}")
 
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 
 def soft_update(main_net, target_net, tau):
@@ -44,7 +44,7 @@ def soft_update(main_net, target_net, tau):
 
 
 if __name__ == "__main__":
-    load_dotenv(dotenv_path="./results_5/.env")
+    load_dotenv(dotenv_path="./results_4/.env")
     gamma = float(os.getenv('gamma'))  # discount factor
     batch_size = int(os.getenv('batch_size'))  # samples from the replay buffer
     buffer_size = int(os.getenv('buffer_size'))  # max size of the replay buffer before overriding it
@@ -63,9 +63,9 @@ if __name__ == "__main__":
     print(save_path)
     episode_score_plt, episode_score_line, x_episode_score, y_episode_score = create_plot("#Episode", "Score")
     episode_avg_critic_loss_plt, episode_avg_critic_loss_line, x_episode_avg_critic_loss, y_episode_avg_critic_loss = create_plot(
-        "#Episode", "Avg Critic Loss", y_min=0, y_max=20)
+        "#Episode", "Avg Critic Loss", y_min=0, y_max=30)
     episode_avg_actor_loss_plt, episode_avg_actor_loss_line, x_episode_avg_actor_loss, y_episode_avg_actor_loss = create_plot(
-        "#Episode", "Avg Actor Loss", y_min=-20, y_max=20)
+        "#Episode", "Avg Actor Loss", y_min=-20, y_max=30)
     episode_distance_plt, episode_distance_line, x_episode_distance, y_episode_distance = create_plot("#Episode",
                                                                                                       "distance",
                                                                                                       y_min=-300,
